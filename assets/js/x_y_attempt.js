@@ -14,7 +14,6 @@ var width = svgWidth - margin.left - margin.right;
 var height = svgHeight - margin.top - margin.bottom;
 console.log("width ",width);
 console.log("height ",height);
-
 // CREATE THE SVG ON THE HTML PAGE
 var svg = d3
   .select("#scatter")
@@ -53,20 +52,30 @@ function renderAxes(newXScale, xAxis) {
     return xAxis;
     }
   
+// function used for updating circles group with a transition to
+// new circles
+function renderCircles(circlesGroup, newXScale, chosenXaxis) {
+
+    circlesGroup.transition()
+      .duration(1000)
+      .attr("cx", d => newXScale(d[chosenXAxis]));
+  
+    return circlesGroup;
+  }
 //=========
 // function used for updating y-scale var upon click on axis label
 function yScale(data, chosenYAxis) {
     // create scales
     var yLinearScale = d3.scaleLinear()
-      .domain([0,
+      .domain([d3.min(data, d => d[chosenYAxis]) * 0.8,
         d3.max(data, d => d[chosenYAxis]) * 1.1
       ])
-      .range([height, 0]);
+      .range([0, width]);
   
     return yLinearScale;
     }
 
-  // function used for updating yAxis var upon click on axis label
+  // function used for updating xAxis var upon click on axis label
 function renderAxes(newYScale, yAxis) {
     var leftAxis = d3.axisLeft(newYScale);
   
@@ -76,39 +85,52 @@ function renderAxes(newYScale, yAxis) {
   
     return yAxis;
     }
-
-// ======
+  
 // function used for updating circles group with a transition to
 // new circles
-function renderCircles(circlesGroup, newXScale, chosenXaxis, newYScale, chosenYaxis) {
+function renderCircles(circlesGroup, newYScale, chosenYaxis) {
 
     circlesGroup.transition()
       .duration(1000)
-      .attr("cx", d=> newXScale(d[chosenXAxis]))
-      .attr("cy", d => newYScale(d[chosenYAxis]))
+      .attr("cy", d => newYScale(d[chosenYAxis]));
   
     return circlesGroup;
   }
 
 //========
 
-// ======
-// function used for updating abbr group with a transition to
-// new circles
-function renderText(abbrGroup, newXScale, chosenXaxis, newYScale, chosenYaxis) {
+// // function used for updating circles group with new tooltip
+// function updateToolTip(chosenXAxis, circlesGroup) {
 
-    abbrGroup.transition()
-      .duration(1000)
-      .attr("x", d=> newXScale(d[chosenXAxis]))
-      .attr("y", d => newYScale(d[chosenYAxis]))
+//     if (chosenXAxis === "poverty") {
+//       var label = "Poverty:";
+//     }
+//     else if (chosenXAxis === "age") {
+//       var label = "Age (Median):";
+//     }
+//     else {
+//         var label = "Household Income (Median):";
+//     }
   
-    return abbrGroup;
-  }
-
-//========
-
-// TOOL TIP GOES HERE
-
+//     var toolTip = d3.tip()
+//       .attr("class", "d3-tip")
+//       .offset([80, -60])
+//       .html(function(d) {
+//         return (`${label} ${d[chosenXAxis]}`);
+//       });
+  
+//     circlesGroup.call(toolTip);
+  
+//     circlesGroup.on("mouseover", function(data) {
+//       toolTip.show(data);
+//     })
+//       // onmouseout event
+//       .on("mouseout", function(data, index) {
+//         toolTip.hide(data);
+//       });
+  
+//     return circlesGroup;
+//   }
 //========
 // IMPORT THE DATA
 d3.csv("assets/data/data.csv").then(function(data, err){
@@ -128,7 +150,7 @@ d3.csv("assets/data/data.csv").then(function(data, err){
     });
 
     // CREATE SCALES
-    // LinearScale function above csv import
+    // xLinearScale function above csv import
     var xLinearScale = xScale(data, chosenXAxis);
     var yLinearScale = yScale(data, chosenYAxis);
 
@@ -157,16 +179,6 @@ d3.csv("assets/data/data.csv").then(function(data, err){
         .attr("cy", d => yLinearScale(d[chosenYAxis]))
         .attr("r", 15)
         .attr("class", "stateCircle");
-    
-        // create abbreviation labels
-    var abbrGroup = chartGroup.selectAll()
-        .data(data)
-        .enter()
-        .append("text")
-        .attr("x", d => xLinearScale(d[chosenXAxis]))
-        .attr("y", d => yLinearScale(d[chosenYAxis]))
-        .text(d => d.abbr)
-        .classed("stateText", true);
 
   // Create group for  3 x- axis labels
     var xlabelsGroup = chartGroup.append("g")
@@ -195,35 +207,33 @@ d3.csv("assets/data/data.csv").then(function(data, err){
 // ========
 // Create group for  3 y- axis labels
     var ylabelsGroup = chartGroup.append("g")
-        .attr("transform", `translate(${height / 6}, ${width / 4})`);
-        // .attr("transform", `translate(${0 - margin.left}, ${chartHeight / 2})`)
-        // .attr("class", "yLabelsGroup");
+        .attr("transform", `translate(${height / 6}, ${width / 4})`)
         // .attr("y", 0 - margin.left)
         // .attr("x", 0 - (height / 2))
-        
+        ;
 
     var healthcareLabel = ylabelsGroup.append("text")
         .attr("transform", "rotate(-90)")
-        .attr("x", 0)
-        .attr("y", -125)
-        .attr("dy", "1em")
+        // .attr("y", 0 - margin.left)
+        // .attr("x", 0 - (height / 2))
+        .attr("dy", "3em")
         .attr("value", "healthcare") // value to grab for event listener
         .classed("active", true)
         .text("Lacks Healthcare (%)");
 
     var smokesLabel = ylabelsGroup.append("text")
         .attr("transform", "rotate(-90)")
-        .attr("x", 0)
-        .attr("y", -145)
-        .attr("dy", "1em")
+        // .attr("y", 0 - margin.left)
+        // .attr("x", 0 - (height / 2))
+        .attr("dy", "2em")
         .attr("value", "smokes") // value to grab for event listener
         .classed("inactive", true)
         .text("Smokes (%)");
         
     var obesityLabel = ylabelsGroup.append("text")
         .attr("transform", "rotate(-90)")
-        .attr("x", 0)
-        .attr("y", -165)
+        // .attr("y", 0 - margin.left)
+        // .attr("x", 0 - (height / 2))
         .attr("dy", "1em")
         .attr("value", "obesity") // value to grab for event listener
         .classed("inactive", true)
@@ -252,10 +262,7 @@ d3.csv("assets/data/data.csv").then(function(data, err){
         xAxis = renderAxes(xLinearScale, xAxis);
 
         // updates circles with new x values
-        circlesGroup = renderCircles(circlesGroup, xLinearScale, chosenXAxis, yLinearScale, chosenYAxis);
-
-        // updates abbr with new x values
-        abbrGroup = renderText(abbrGroup, xLinearScale, chosenXAxis, yLinearScale, chosenYAxis);
+        circlesGroup = renderCircles(circlesGroup, xLinearScale, chosenXAxis);
 
         // // updates tooltips with new info
         // circlesGroup = updateToolTip(chosenXAxis, circlesGroup);
@@ -297,30 +304,28 @@ d3.csv("assets/data/data.csv").then(function(data, err){
     }
     });
 // ======
-    // y axis labels event listener
-    ylabelsGroup.selectAll("text")
-    .on("click", function() {
-    // get value of selection
-    var value = d3.select(this).attr("value");
-    if (value !== chosenYAxis) {
+
+// x axis labels event listener
+ylabelsGroup.selectAll("text")
+.on("click", function() {
+// get value of selection
+var value = d3.select(this).attr("value");
+if (value !== chosenXAxis) {
 
     // replaces chosenXAxis with value
-    chosenYAxis = value;
+    chosenXAxis = value;
 
-    console.log(chosenYAxis)
+    console.log(chosenXAxis)
 
     // functions here found above csv import
-    // updates y scale for new data
-    yLinearScale = yScale(data, chosenYAxis);
+    // updates x scale for new data
+    xLinearScale = xScale(data, chosenXAxis);
 
-    // updates y axis with transition
-    yAxis = renderAxes(yLinearScale, yAxis);
+    // updates x axis with transition
+    xAxis = renderAxes(xLinearScale, xAxis);
 
-    // updates circles with new y values
-    circlesGroup = renderCircles(circlesGroup, xLinearScale, chosenXAxis, yLinearScale, chosenYAxis);
-
-    // updates abbr with new y values
-    abbrGroup = renderText(abbrGroup, xLinearScale, chosenXAxis, yLinearScale, chosenYAxis);
+    // updates circles with new x values
+    circlesGroup = renderCircles(circlesGroup, xLinearScale, chosenXAxis);
 
     // // updates tooltips with new info
     // circlesGroup = updateToolTip(chosenXAxis, circlesGroup);
@@ -337,7 +342,7 @@ d3.csv("assets/data/data.csv").then(function(data, err){
             .classed("active", false)
             .classed("inactive", true);
     }
-    else if (chosenYAxis === "obesity") {
+    else if (chosenXAxis === "obesity") {
         smokesLabel
             .classed("active", false)
             .classed("inactive", true);
